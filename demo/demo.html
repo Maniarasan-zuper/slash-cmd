@@ -1,0 +1,237 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --text: rgb(55, 53, 47);
+        --muted: #8a8780;
+        --border: #e6e4df;
+        --accent: #4a7dff;
+        --accent-soft: #eef2ff;
+        --code-bg: #f6f5f3;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        width: 760px;
+        height: 880px;
+        background: #f3f2ef;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .window {
+        width: 700px;
+        margin-top: 26px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.10);
+        overflow: hidden;
+      }
+      .titlebar {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--border);
+        background: #faf9f7;
+      }
+      .dot { width: 11px; height: 11px; border-radius: 50%; }
+      .dot.r { background: #ff5f57; }
+      .dot.y { background: #febc2e; }
+      .dot.g { background: #28c840; }
+      .tab {
+        margin-left: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .doc { padding: 28px 40px 40px; position: relative; min-height: 786px; }
+      h1.note-title {
+        font-size: 30px;
+        font-weight: 700;
+        margin: 0 0 18px;
+        letter-spacing: -0.02em;
+      }
+      .para {
+        font-size: 16px;
+        line-height: 1.7;
+        color: var(--text);
+        min-height: 27px;
+        white-space: pre-wrap;
+      }
+      .para .typed { color: var(--text); }
+      .caret {
+        display: inline-block;
+        width: 2px;
+        height: 19px;
+        background: var(--accent);
+        transform: translateY(3px);
+        margin-left: 1px;
+      }
+
+      /* Slash popover */
+      .popover {
+        position: absolute;
+        left: 40px;
+        top: 96px;
+        width: 320px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+        padding: 6px;
+        display: none;
+      }
+      .popover.show { display: block; }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px;
+        border-radius: 7px;
+      }
+      .row.active { background: var(--accent-soft); }
+      .ico {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        font-size: 14px;
+        font-weight: 600;
+        color: #57544e;
+      }
+      .meta { display: flex; flex-direction: column; line-height: 1.2; }
+      .t { font-size: 13.5px; font-weight: 600; }
+      .d { font-size: 11.5px; color: var(--muted); }
+
+      /* Inserted table */
+      table.demo {
+        border-collapse: collapse;
+        margin-top: 6px;
+        font-size: 14px;
+      }
+      table.demo th, table.demo td {
+        border: 1px solid var(--border);
+        padding: 7px 14px;
+        text-align: left;
+        min-width: 110px;
+      }
+      table.demo th { background: var(--code-bg); font-weight: 600; }
+
+      .hint {
+        position: absolute;
+        right: 40px;
+        bottom: 22px;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--code-bg);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="window">
+      <div class="titlebar">
+        <span class="dot r"></span><span class="dot y"></span
+        ><span class="dot g"></span>
+        <span class="tab">Meeting notes.md</span>
+      </div>
+      <div class="doc">
+        <h1 class="note-title">Meeting notes</h1>
+        <div class="para" id="para"></div>
+        <div class="popover" id="pop"></div>
+        <div class="hint" id="hint">Slash Cmd</div>
+      </div>
+    </div>
+
+    <script>
+      const BLOCKS = [
+        ["H1", "Heading 1", "Big section heading"],
+        ["H2", "Heading 2", "Medium section heading"],
+        ["H3", "Heading 3", "Small section heading"],
+        ["¶", "Text", "Plain paragraph"],
+        ["•", "Bullet list", "Unordered list item"],
+        ["1.", "Numbered list", "Ordered list item"],
+        ["☑", "To-do", "Checkbox task"],
+        ["❝", "Quote", "Block quote"],
+        ["▤", "Callout", "Highlighted note box"],
+        ["{ }", "Code block", "Fenced code"],
+        ["▦", "Table", "2x2 markdown table"],
+        ["—", "Divider", "Horizontal rule"],
+        ["🔗", "Internal link", "Link to another note"],
+        ["∑", "Math block", "LaTeX equation"],
+        ["📅", "Today's date", "Insert today as YYYY-MM-DD"],
+      ];
+
+      const para = document.getElementById("para");
+      const pop = document.getElementById("pop");
+
+      function setParagraph(text) {
+        para.innerHTML =
+          '<span class="typed">' + text + '</span><span class="caret"></span>';
+      }
+
+      function renderMenu(items, activeIdx) {
+        pop.innerHTML = items
+          .map(
+            (b, i) =>
+              '<div class="row' +
+              (i === activeIdx ? " active" : "") +
+              '"><div class="ico">' +
+              b[0] +
+              '</div><div class="meta"><div class="t">' +
+              b[1] +
+              '</div><div class="d">' +
+              b[2] +
+              "</div></div></div>"
+          )
+          .join("");
+      }
+
+      function showTable() {
+        para.innerHTML =
+          '<table class="demo"><thead><tr><th>Column 1</th><th>Column 2</th></tr></thead>' +
+          "<tbody><tr><td>&nbsp;</td><td>&nbsp;</td></tr>" +
+          "<tr><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table>" +
+          '<span class="caret"></span>';
+      }
+
+      // The render states the capture script steps through.
+      window.render = function (state) {
+        pop.classList.remove("show");
+        if (state === "idle") {
+          setParagraph("");
+        } else if (state === "slash") {
+          setParagraph("/");
+          renderMenu(BLOCKS, 0);
+          pop.classList.add("show");
+        } else if (state === "filter") {
+          setParagraph("/ta");
+          renderMenu(
+            BLOCKS.filter((b) => b[1].toLowerCase().includes("ta")),
+            0
+          );
+          pop.classList.add("show");
+        } else if (state === "done") {
+          showTable();
+        }
+      };
+
+      window.render("idle");
+    </script>
+  </body>
+</html>

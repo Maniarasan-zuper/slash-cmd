@@ -5,7 +5,7 @@ insert — headings, tables, callouts, code blocks, lists, and more. Keep typing
 to filter, then press <kbd>Enter</kbd> to insert. Your cursor lands in the right
 spot automatically.
 
-![demo](demo.gif)
+![Slash Cmd demo](https://raw.githubusercontent.com/Maniarasan-zuper/slash-cmd/main/demo.gif)
 
 ## Usage
 
