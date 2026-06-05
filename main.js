@@ -1,13 +1,16 @@
 "use strict";
 
-const { Plugin, EditorSuggest, setIcon } = require("obsidian");
+const { Plugin, EditorSuggest, setIcon, Notice } = require("obsidian");
 
 // A sentinel marking "place the cursor here" inside templates. Form feed is
 // never part of any template text, so it is safe to search for and strip.
 const CARET = "\f";
 
-// The block menu. Each entry is either a static `template` (with an optional
-// CARET marker for cursor placement) or a dynamic `apply(editor, ctx)` fn.
+// The block menu. An entry is one of:
+//   - `template`: static text inserted at the cursor (CARET marks the caret).
+//   - `apply(editor, ctx, app)`: dynamic insertion.
+//   - `media: { accept }`: opens the system file picker, copies the chosen
+//     file(s) into the vault, and embeds them.
 const BLOCKS = [
   {
     title: "Heading 1",
@@ -88,6 +91,34 @@ const BLOCKS = [
       "| Column 1 | Column 2 |\n| --- | --- |\n| " + CARET + " |  |\n|  |  |",
   },
   {
+    title: "Image",
+    desc: "Browse and embed an image",
+    icon: "image",
+    keywords: ["img", "image", "picture", "photo", "screenshot", "upload"],
+    media: { accept: "image/*" },
+  },
+  {
+    title: "Video",
+    desc: "Browse and embed a video",
+    icon: "film",
+    keywords: ["video", "movie", "mp4", "mov", "clip", "media"],
+    media: { accept: "video/*" },
+  },
+  {
+    title: "Audio",
+    desc: "Browse and embed an audio file",
+    icon: "music",
+    keywords: ["audio", "sound", "music", "mp3", "voice", "recording"],
+    media: { accept: "audio/*" },
+  },
+  {
+    title: "File",
+    desc: "Browse and attach any file",
+    icon: "paperclip",
+    keywords: ["file", "attachment", "attach", "upload", "pdf", "doc"],
+    media: { accept: "" },
+  },
+  {
     title: "Divider",
     desc: "Horizontal rule",
     icon: "minus",
@@ -134,15 +165,89 @@ function replaceWithTemplate(editor, ctx, template) {
   if (caretIdx === -1) caretIdx = text.length;
 
   editor.replaceRange(text, ctx.start, ctx.end);
+  editor.setCursor(offsetPos(ctx.start, text.slice(0, caretIdx)));
+}
 
-  const before = text.slice(0, caretIdx);
-  const lines = before.split("\n");
-  const line = ctx.start.line + lines.length - 1;
-  const ch =
-    lines.length === 1
-      ? ctx.start.ch + before.length
-      : lines[lines.length - 1].length;
-  editor.setCursor({ line, ch });
+// Position reached by typing `text` starting at `start`.
+function offsetPos(start, text) {
+  const lines = text.split("\n");
+  return {
+    line: start.line + lines.length - 1,
+    ch:
+      lines.length === 1
+        ? start.ch + text.length
+        : lines[lines.length - 1].length,
+  };
+}
+
+// Make sure the parent folder of a vault-relative path exists.
+async function ensureParentFolder(app, path) {
+  const slash = path.lastIndexOf("/");
+  if (slash <= 0) return;
+  const dir = path.slice(0, slash);
+  if (!app.vault.getAbstractFileByPath(dir)) {
+    try {
+      await app.vault.createFolder(dir);
+    } catch (e) {
+      // Folder was likely created concurrently; ignore.
+    }
+  }
+}
+
+// Open the system file browser, copy the picked file(s) into the vault's
+// attachment folder, and replace the slash trigger with embed link(s).
+function insertMedia(app, editor, ctx, accept) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.multiple = true;
+  if (accept) input.accept = accept;
+  input.style.display = "none";
+  document.body.appendChild(input);
+
+  // If the user cancels, no `change` fires and the "/" trigger is left intact.
+  input.addEventListener(
+    "change",
+    async () => {
+      const files = Array.from(input.files || []);
+      input.remove();
+      if (!files.length) {
+        editor.focus();
+        return;
+      }
+
+      const sourcePath = app.workspace.getActiveFile()?.path ?? "";
+      const links = [];
+      for (const file of files) {
+        try {
+          const data = await file.arrayBuffer();
+          const dest = await app.fileManager.getAvailablePathForAttachment(
+            file.name,
+            sourcePath
+          );
+          await ensureParentFolder(app, dest);
+          const tfile = await app.vault.createBinary(dest, data);
+          let link = app.fileManager.generateMarkdownLink(tfile, sourcePath);
+          if (!link.startsWith("!")) link = "!" + link;
+          links.push(link);
+        } catch (e) {
+          console.error("Slash Cmd: failed to embed " + file.name, e);
+          new Notice("Slash Cmd: couldn't embed " + file.name);
+        }
+      }
+      if (!links.length) {
+        editor.focus();
+        return;
+      }
+
+      const text = links.join("\n");
+      editor.replaceRange(text, ctx.start, ctx.end);
+      editor.setCursor(offsetPos(ctx.start, text));
+      editor.focus();
+    },
+    { once: true }
+  );
+
+  input.click();
 }
 
 class SlashSuggest extends EditorSuggest {
@@ -182,8 +287,10 @@ class SlashSuggest extends EditorSuggest {
   selectSuggestion(item) {
     const ctx = this.context;
     if (!ctx) return;
-    if (typeof item.apply === "function") {
-      item.apply(ctx.editor, ctx);
+    if (item.media) {
+      insertMedia(this.app, ctx.editor, ctx, item.media.accept);
+    } else if (typeof item.apply === "function") {
+      item.apply(ctx.editor, ctx, this.app);
     } else {
       replaceWithTemplate(ctx.editor, ctx, item.template);
     }

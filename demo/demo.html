@@ -16,7 +16,7 @@
       html, body { margin: 0; padding: 0; }
       body {
         width: 760px;
-        height: 880px;
+        height: 720px;
         background: #f3f2ef;
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
           sans-serif;
@@ -53,7 +53,7 @@
         font-size: 12px;
         color: var(--muted);
       }
-      .doc { padding: 28px 40px 40px; position: relative; min-height: 786px; }
+      .doc { padding: 28px 40px 40px; position: relative; min-height: 626px; }
       h1.note-title {
         font-size: 30px;
         font-weight: 700;
@@ -82,15 +82,29 @@
         position: absolute;
         left: 40px;
         top: 96px;
-        width: 320px;
+        width: 340px;
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 10px;
         box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
         padding: 6px;
         display: none;
+        max-height: 470px;
+        overflow: hidden;
       }
       .popover.show { display: block; }
+      /* Fade the clipped list, like Obsidian's scrollable suggestion popover. */
+      .popover.clipped::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 46px;
+        border-radius: 0 0 10px 10px;
+        background: linear-gradient(rgba(255, 255, 255, 0), #fff 80%);
+        pointer-events: none;
+      }
       .row {
         display: flex;
         align-items: center;
@@ -130,6 +144,15 @@
         min-width: 110px;
       }
       table.demo th { background: var(--code-bg); font-weight: 600; }
+
+      .embed { display: inline-block; margin-top: 4px; }
+      .embed img {
+        width: 460px;
+        border-radius: 8px;
+        display: block;
+        border: 1px solid var(--border);
+      }
+      .cap { font-size: 12px; color: var(--muted); margin-top: 7px; }
 
       .hint {
         position: absolute;
@@ -171,6 +194,10 @@
         ["▤", "Callout", "Highlighted note box"],
         ["{ }", "Code block", "Fenced code"],
         ["▦", "Table", "2x2 markdown table"],
+        ["🖼", "Image", "Browse and embed an image"],
+        ["🎬", "Video", "Browse and embed a video"],
+        ["🔊", "Audio", "Browse and embed an audio file"],
+        ["📎", "File", "Browse and attach any file"],
         ["—", "Divider", "Horizontal rule"],
         ["🔗", "Internal link", "Link to another note"],
         ["∑", "Math block", "LaTeX equation"],
@@ -202,32 +229,44 @@
           .join("");
       }
 
-      function showTable() {
+      const IMG_SVG =
+        "<svg xmlns='http://www.w3.org/2000/svg' width='460' height='270'>" +
+        "<defs><linearGradient id='s' x1='0' y1='0' x2='0' y2='1'>" +
+        "<stop offset='0' stop-color='#aee1ff'/><stop offset='1' stop-color='#eaf8ff'/>" +
+        "</linearGradient></defs>" +
+        "<rect width='460' height='270' fill='url(#s)'/>" +
+        "<circle cx='370' cy='66' r='30' fill='#ffd66b'/>" +
+        "<path d='M0 270 L130 140 L235 215 L320 110 L460 270 Z' fill='#7bc486'/>" +
+        "<path d='M0 270 L110 195 L210 270 Z' fill='#5fae6e'/>" +
+        "</svg>";
+      const IMG = "data:image/svg+xml;base64," + btoa(IMG_SVG);
+
+      function showImage() {
         para.innerHTML =
-          '<table class="demo"><thead><tr><th>Column 1</th><th>Column 2</th></tr></thead>' +
-          "<tbody><tr><td>&nbsp;</td><td>&nbsp;</td></tr>" +
-          "<tr><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table>" +
+          '<div class="embed"><img src="' +
+          IMG +
+          '" alt="beach.jpg"/><div class="cap">beach.jpg</div></div>' +
           '<span class="caret"></span>';
       }
 
       // The render states the capture script steps through.
       window.render = function (state) {
-        pop.classList.remove("show");
+        pop.classList.remove("show", "clipped");
         if (state === "idle") {
           setParagraph("");
         } else if (state === "slash") {
           setParagraph("/");
           renderMenu(BLOCKS, 0);
-          pop.classList.add("show");
+          pop.classList.add("show", "clipped");
         } else if (state === "filter") {
-          setParagraph("/ta");
+          setParagraph("/img");
           renderMenu(
-            BLOCKS.filter((b) => b[1].toLowerCase().includes("ta")),
+            BLOCKS.filter((b) => b[1] === "Image"),
             0
           );
           pop.classList.add("show");
         } else if (state === "done") {
-          showTable();
+          showImage();
         }
       };
 

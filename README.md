@@ -16,8 +16,16 @@ arrow keys, and press <kbd>Enter</kbd> to insert.
 ## Blocks
 
 Heading 1 / 2 / 3 · Text · Bullet list · Numbered list · To-do · Quote ·
-Callout · Code block · Table · Divider · Internal link · Math block ·
-Today's date.
+Callout · Code block · Table · **Image · Video · Audio · File** · Divider ·
+Internal link · Math block · Today's date.
+
+### Media (`/image`, `/video`, `/audio`, `/file`)
+
+Picking a media block opens your **system file browser**. The file you choose is
+copied into your vault's configured attachment folder and embedded with
+`![[…]]` — the same way Notion's "upload from computer" works. You can select
+multiple files at once. (Obsidian can't render arbitrary external paths in
+reading view, so the file is brought into the vault rather than linked in place.)
 
 ## Install
 

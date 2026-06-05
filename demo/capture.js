@@ -8,7 +8,7 @@ const fs = require("fs");
 const CHROME =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const W = 760;
-const H = 880;
+const H = 720;
 const OUT = path.join(__dirname, "..", "demo.gif");
 
 // Sequence of (state, hold-in-ms). Holds become repeated frames at 100ms each.
