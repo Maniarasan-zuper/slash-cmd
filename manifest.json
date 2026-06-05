@@ -1,0 +1,10 @@
+{
+  "id": "slash-cmd",
+  "name": "Slash Cmd",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Type / for a quick menu to insert headings, tables, callouts, code blocks, lists and more.",
+  "author": "maniarasan.s",
+  "authorUrl": "https://github.com/Maniarasan-zuper",
+  "isDesktopOnly": false
+}

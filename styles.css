@@ -1,0 +1,46 @@
+/* Slash Cmd — Notion-style insert menu */
+
+.suggestion-item.slash-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+}
+
+.slash-cmd-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--background-primary);
+}
+
+.slash-cmd-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.slash-cmd-body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.slash-cmd-title {
+  font-weight: 600;
+  font-size: var(--font-ui-small);
+}
+
+.slash-cmd-desc {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
